@@ -32,7 +32,9 @@ impl<'a, S: DataSourceSource> Vdfs<'a, S> {
                     path.push_str(parent_folder);
                 }
                 add_path_component(&mut path, record.data.get_name_string().as_str());
-                fs::create_dir(&path).unwrap();
+                fs::create_dir(&path).unwrap_or_else(|e| {
+                    println!("Error: {}, likely a case-insensitive filesystem as target? Skipping.", e);
+                });
                 folders_map.insert(record.data.object_id, path);
             }
         }
@@ -191,18 +193,26 @@ impl<'a, S: DataSourceSource> Vdfs<'a, S> {
         let compressed_flag = catalog_file_record
             .common
             .has_file_flag(VdfsFileFlags::CompressedFile);
-        let compression = descriptor.get_compression();
+        let mut compression = descriptor.get_compression();
         let signature_type = descriptor.get_signature_type();
         let auth_type = descriptor.get_auth();
         let extents_count = descriptor.extents_num as u64;
 
+        /*
         if auth_type.is_some() {
             println!("SKIPPING FILE WITH AUTH: {}", path);
-            return Ok(());
+            println!("Compression: {:?}, compressed flag: {}", compression, compressed_flag);
+            // return Ok(());
+            if compressed_flag {
+                compression = Some(VdfsFileCompression::Zlib);
+            }
             //todo!("Implement auth")
         }
-        if !compressed_flag || compression.is_none() {
-            return Err(VdfsError::CannotDecompressFileWithoutCompression);
+        */
+
+        if compressed_flag && compression.is_none() {
+            // Fall back to zlib compression by default.
+            compression = Some(VdfsFileCompression::Zlib);
         }
 
         let mut first_extent_position =

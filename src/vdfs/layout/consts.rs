@@ -135,6 +135,7 @@ pub enum VdfsFileFlags {
     ProfiledFile = 18,
 }
 
+#[derive(Debug)]
 pub enum VdfsFileCompression {
     Zlib,
     Gzip,
